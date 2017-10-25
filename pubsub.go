@@ -1,8 +1,7 @@
 package pubsub
 
 import (
-	"fmt"
-	"log"
+	"strings"
 )
 
 type operation int
@@ -17,23 +16,27 @@ const (
 	shutdown
 )
 
-type multiError []interface{}
+type multiError []error
 
 func (me *multiError) Add(err interface{}) {
 	if err == nil {
 		return
 	}
-	if me == nil {
-		me = &multiError{}
+	if e, ok := err.(error); ok {
+		*me = append(*me, e)
 	}
-	ne := append(*me, err)
-	me = &ne
-	log.Println(me)
+}
+
+func (me *multiError) IsNil() bool {
+	return me == nil || len(*me) == 0
 }
 
 func (me *multiError) Error() string {
-	log.Println(222, *me)
-	return fmt.Sprint(*me...)
+	var errs []string
+	for _, e := range *me {
+		errs = append(errs, e.Error())
+	}
+	return strings.Join(errs, ";")
 }
 
 type handler func(interface{}) interface{}
@@ -113,7 +116,7 @@ func (ps *PubSub) Pub(topic string, msg interface{}) error {
 
 // NewSub 初始化一个订阅者
 func (ps *PubSub) send(topic string, msg interface{}) error {
-	var err *multiError
+	var err = &multiError{}
 	for _, subber := range ps.topics[topic] {
 		handle := subber.handlers[topic]
 		if !handle.asny {
@@ -122,6 +125,9 @@ func (ps *PubSub) send(topic string, msg interface{}) error {
 			message := message{topic: topic, msg: msg}
 			subber.ch <- message
 		}
+	}
+	if err.IsNil() {
+		return nil
 	}
 	return err
 }
