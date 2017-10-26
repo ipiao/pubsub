@@ -52,17 +52,18 @@ type handle struct {
 type Subber struct {
 	topics   []string           // 表示订阅的主题
 	handlers map[string]*handle // 每个主题的处理方法
-	ch       chan message       // 异步处理通道
+	ch       chan Message       // 异步处理通道
 }
 
-type message struct {
-	topic string
-	msg   interface{}
+// Message ..
+type Message struct {
+	Topic string
+	Data  interface{}
 }
 
 func (s *Subber) run() {
 	for mes := range s.ch {
-		s.handlers[mes.topic].handler(mes.msg)
+		s.handlers[mes.Topic].handler(mes)
 	}
 }
 
@@ -88,15 +89,23 @@ func New(capacity int) *PubSub {
 	}
 }
 
-// // Sub 添加一个订阅者
-// func (ps *PubSub) Sub(topics ...string) *Subber {
+// Sub 添加一个订阅者
+func (ps *PubSub) Sub(handler handler, asny bool, topics ...string) *Subber {
+	var handles []handle
+	for _, topic := range topics {
+		handles = append(handles, handle{
+			topic:   topic,
+			asny:    asny,
+			handler: handler,
+		})
+	}
+	return ps.InitSub(handles...)
+}
 
-// }
-
-// NewSub 初始化一个订阅者
-func (ps *PubSub) NewSub(handles ...handle) *Subber {
+// InitSub 初始化一个订阅者
+func (ps *PubSub) InitSub(handles ...handle) *Subber {
 	subber := &Subber{
-		ch:       make(chan message, ps.capacity),
+		ch:       make(chan Message, ps.capacity),
 		handlers: make(map[string]*handle),
 	}
 	for i := range handles {
@@ -119,10 +128,10 @@ func (ps *PubSub) send(topic string, msg interface{}) error {
 	var err = &multiError{}
 	for _, subber := range ps.topics[topic] {
 		handle := subber.handlers[topic]
+		message := Message{Topic: topic, Data: msg}
 		if !handle.asny {
-			err.Add(handle.handler(msg))
+			err.Add(handle.handler(message))
 		} else {
-			message := message{topic: topic, msg: msg}
 			subber.ch <- message
 		}
 	}

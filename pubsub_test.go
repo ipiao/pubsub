@@ -41,19 +41,21 @@ func TestPubSub(t *testing.T) {
 			log.Println("topic 3 from handles2")
 			return errors.New("hello1")
 		}},
-		handle{topic: "4", asny: false, handler: func(interface{}) interface{} {
+		handle{topic: "4", asny: false, handler: func(msg interface{}) interface{} {
+			mes := msg.(Message)
+			log.Println(mes)
 			log.Println("topic 4 from handles2")
 			return errors.New("hello2")
 		}},
 	}
 
-	ps.NewSub(handles1...)
-	ps.NewSub(handles2...)
+	ps.InitSub(handles1...)
+	ps.InitSub(handles2...)
 
 	t.Log(ps.Pub("1", ""))
 	t.Log(ps.Pub("2", ""))
 	t.Log(ps.Pub("3", ""))
-	t.Log(ps.Pub("4", ""))
+	t.Log(ps.Pub("4", "this is data"))
 
 	time.Sleep(time.Second * 1)
 }
