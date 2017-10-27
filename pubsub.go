@@ -49,18 +49,23 @@ func (me *MultiResult) Error() string {
 
 type handler func(interface{}) interface{}
 
-// handle 是一个订阅者处理一个主题事件的集
-type handle struct {
+// Handle 是一个订阅者处理一个主题事件的集
+type Handle struct {
 	topic   string
 	asny    bool    // 是否同步，默认是异步的
 	handler handler // 处理方法
+}
+
+// NewHandle create a handle
+func NewHandle(topic string, asny bool, handler handler) Handle {
+	return Handle{topic, asny, handler}
 }
 
 // Subber 订阅者
 type Subber struct {
 	name     string
 	topics   []string           // 表示订阅的主题
-	handlers map[string]*handle // 每个主题的处理方法
+	handlers map[string]*Handle // 每个主题的处理方法
 	ch       chan Message       // 异步处理通道
 }
 
@@ -76,7 +81,7 @@ func (s *Subber) run() {
 	}
 }
 
-func (s *Subber) setHandle(handle *handle) {
+func (s *Subber) setHandle(handle *Handle) {
 	if _, ok := s.handlers[handle.topic]; !ok {
 		s.topics = append(s.topics, handle.topic)
 	}
@@ -100,9 +105,9 @@ func New(capacity int) *PubSub {
 
 // Sub 添加一个订阅者
 func (ps *PubSub) Sub(name string, asny bool, handler handler, topics ...string) *Subber {
-	var handles []handle
+	var handles []Handle
 	for _, topic := range topics {
-		handles = append(handles, handle{
+		handles = append(handles, Handle{
 			topic:   topic,
 			asny:    asny,
 			handler: handler,
@@ -112,11 +117,11 @@ func (ps *PubSub) Sub(name string, asny bool, handler handler, topics ...string)
 }
 
 // InitSub 初始化一个订阅者
-func (ps *PubSub) InitSub(name string, handles ...handle) *Subber {
+func (ps *PubSub) InitSub(name string, handles ...Handle) *Subber {
 	subber := &Subber{
 		name:     name,
 		ch:       make(chan Message, ps.capacity),
-		handlers: make(map[string]*handle),
+		handlers: make(map[string]*Handle),
 	}
 	for i := range handles {
 		handle := &handles[i]
