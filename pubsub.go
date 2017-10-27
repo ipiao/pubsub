@@ -1,8 +1,6 @@
 package pubsub
 
-import (
-	"strings"
-)
+import "encoding/json"
 
 type operation int
 
@@ -16,27 +14,37 @@ const (
 	shutdown
 )
 
-type multiError []error
+// MultiResult for result
+type MultiResult map[string]interface{}
 
-func (me *multiError) Add(err interface{}) {
-	if err == nil {
+// Set a resu;t
+func (me *MultiResult) Set(k string, r interface{}) {
+	if r == nil {
 		return
 	}
-	if e, ok := err.(error); ok {
-		*me = append(*me, e)
-	}
+	(*me)[k] = r
 }
 
-func (me *multiError) IsNil() bool {
+// Map return itself
+func (me *MultiResult) Map() map[string]interface{} {
+	return *me
+}
+
+// IsNil ..
+func (me *MultiResult) IsNil() bool {
 	return me == nil || len(*me) == 0
 }
 
-func (me *multiError) Error() string {
-	var errs []string
-	for _, e := range *me {
-		errs = append(errs, e.Error())
+// MultiResult for err
+func (me *MultiResult) Error() string {
+	var errs = make(map[string]string)
+	for k, v := range *me {
+		if err, ok := v.(error); ok {
+			errs[k] = err.Error()
+		}
 	}
-	return strings.Join(errs, ";")
+	bs, _ := json.Marshal(errs)
+	return string(bs)
 }
 
 type handler func(interface{}) interface{}
@@ -50,6 +58,7 @@ type handle struct {
 
 // Subber 订阅者
 type Subber struct {
+	name     string
 	topics   []string           // 表示订阅的主题
 	handlers map[string]*handle // 每个主题的处理方法
 	ch       chan Message       // 异步处理通道
@@ -90,7 +99,7 @@ func New(capacity int) *PubSub {
 }
 
 // Sub 添加一个订阅者
-func (ps *PubSub) Sub(handler handler, asny bool, topics ...string) *Subber {
+func (ps *PubSub) Sub(name string, asny bool, handler handler, topics ...string) *Subber {
 	var handles []handle
 	for _, topic := range topics {
 		handles = append(handles, handle{
@@ -99,12 +108,13 @@ func (ps *PubSub) Sub(handler handler, asny bool, topics ...string) *Subber {
 			handler: handler,
 		})
 	}
-	return ps.InitSub(handles...)
+	return ps.InitSub(name, handles...)
 }
 
 // InitSub 初始化一个订阅者
-func (ps *PubSub) InitSub(handles ...handle) *Subber {
+func (ps *PubSub) InitSub(name string, handles ...handle) *Subber {
 	subber := &Subber{
+		name:     name,
 		ch:       make(chan Message, ps.capacity),
 		handlers: make(map[string]*handle),
 	}
@@ -119,24 +129,21 @@ func (ps *PubSub) InitSub(handles ...handle) *Subber {
 }
 
 // Pub 发布一个消息
-func (ps *PubSub) Pub(topic string, msg interface{}) error {
+func (ps *PubSub) Pub(topic string, msg interface{}) *MultiResult {
 	return ps.send(topic, msg)
 }
 
 // NewSub 初始化一个订阅者
-func (ps *PubSub) send(topic string, msg interface{}) error {
-	var err = &multiError{}
+func (ps *PubSub) send(topic string, msg interface{}) *MultiResult {
+	var res = &MultiResult{}
 	for _, subber := range ps.topics[topic] {
 		handle := subber.handlers[topic]
 		message := Message{Topic: topic, Data: msg}
 		if !handle.asny {
-			err.Add(handle.handler(message))
+			res.Set(subber.name, handle.handler(message))
 		} else {
 			subber.ch <- message
 		}
 	}
-	if err.IsNil() {
-		return nil
-	}
-	return err
+	return res
 }

@@ -45,17 +45,17 @@ func TestPubSub(t *testing.T) {
 			mes := msg.(Message)
 			log.Println(mes)
 			log.Println("topic 4 from handles2")
-			return errors.New("hello2")
+			return "hello2"
 		}},
 	}
 
-	ps.InitSub(handles1...)
-	ps.InitSub(handles2...)
+	ps.InitSub("sub1", handles1...)
+	ps.InitSub("sub2", handles2...)
 
-	t.Log(ps.Pub("1", ""))
-	t.Log(ps.Pub("2", ""))
-	t.Log(ps.Pub("3", ""))
-	t.Log(ps.Pub("4", "this is data"))
+	t.Log(ps.Pub("1", "").Map())
+	t.Log(ps.Pub("2", "").Map())
+	t.Log(ps.Pub("3", "").Map())
+	t.Log(ps.Pub("4", "this is data").Map())
 
 	time.Sleep(time.Second * 1)
 }
