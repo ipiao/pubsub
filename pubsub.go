@@ -2,18 +2,6 @@ package pubsub
 
 import "encoding/json"
 
-type operation int
-
-const (
-	sub operation = iota
-	subOnce
-	pub
-	unsub
-	unsubAll
-	closeTopic
-	shutdown
-)
-
 // MultiResult for result
 type MultiResult map[string]interface{}
 
@@ -52,7 +40,7 @@ type handler func(interface{}) interface{}
 // Handle 是一个订阅者处理一个主题事件的集
 type Handle struct {
 	topic   string
-	asny    bool    // 是否同步，默认是异步的
+	asny    bool    // 是否异步，默认是同时步的
 	handler handler // 处理方法
 }
 
