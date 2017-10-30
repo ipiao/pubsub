@@ -70,7 +70,7 @@ type Subber struct {
 	name     string
 	topics   []string           // 表示订阅的主题
 	handlers map[string]*Handle // 每个主题的处理方法
-	ch       chan Message       // 异步处理通道
+	ch       chan *Message      // 异步处理通道
 }
 
 // Message ..
@@ -124,7 +124,7 @@ func (ps *PubSub) Sub(name string, asny bool, handler handler, topics ...string)
 func (ps *PubSub) InitSub(name string, handles ...Handle) *Subber {
 	subber := &Subber{
 		name:     name,
-		ch:       make(chan Message, ps.capacity),
+		ch:       make(chan *Message, ps.capacity),
 		handlers: make(map[string]*Handle),
 	}
 	for i := range handles {
@@ -150,7 +150,7 @@ func (ps *PubSub) send(topic string, msg interface{}) *MultiResult {
 	}
 	for _, subber := range ps.topics[topic] {
 		handle := subber.handlers[topic]
-		message := Message{Topic: topic, Data: msg}
+		message := &Message{Topic: topic, Data: msg}
 		if !handle.asny {
 			res.Set(subber.name, handle.handler(message))
 		} else {
