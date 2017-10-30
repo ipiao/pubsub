@@ -1,6 +1,9 @@
 package pubsub
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"errors"
+)
 
 // MultiResult for result
 type MultiResult map[string]interface{}
@@ -142,6 +145,9 @@ func (ps *PubSub) Pub(topic string, msg interface{}) *MultiResult {
 // NewSub 初始化一个订阅者
 func (ps *PubSub) send(topic string, msg interface{}) *MultiResult {
 	var res = &MultiResult{}
+	if len(ps.topics[topic]) == 0 {
+		res.Set("WARN", errors.New("no subber"))
+	}
 	for _, subber := range ps.topics[topic] {
 		handle := subber.handlers[topic]
 		message := Message{Topic: topic, Data: msg}
