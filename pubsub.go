@@ -23,6 +23,19 @@ func (me *MultiResult) IsNil() bool {
 	return me == nil || len(*me) == 0
 }
 
+// HasError ..
+func (me *MultiResult) HasError() bool {
+	if me == nil {
+		return false
+	}
+	for _, v := range *me {
+		if _, ok := v.(error); ok {
+			return true
+		}
+	}
+	return false
+}
+
 // MultiResult for err
 func (me *MultiResult) Error() string {
 	var errs = make(map[string]string)
