@@ -3,6 +3,7 @@ package pubsub
 import (
 	"encoding/json"
 	"errors"
+	"time"
 )
 
 // MultiResult for result
@@ -75,8 +76,9 @@ type Subber struct {
 
 // Message ..
 type Message struct {
-	Topic string
-	Data  interface{}
+	Topic     string
+	Data      interface{}
+	TimeStamp int64
 }
 
 func (s *Subber) run() {
@@ -150,7 +152,7 @@ func (ps *PubSub) send(topic string, msg interface{}) *MultiResult {
 	}
 	for _, subber := range ps.topics[topic] {
 		handle := subber.handlers[topic]
-		message := &Message{Topic: topic, Data: msg}
+		message := &Message{Topic: topic, Data: msg, TimeStamp: time.Now().Unix()}
 		if !handle.asny {
 			res.Set(subber.name, handle.handler(message))
 		} else {
